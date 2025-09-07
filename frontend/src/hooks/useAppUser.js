@@ -10,7 +10,11 @@ export const useAppUser = () => {
     if (isLoaded && isSignedIn && clerkUser) {
       const fetchAppUser = async () => {
         try {
-          const response = await fetch(`/api/users/me?clerkId=${clerkUser.id}`);
+          const response = await fetch(
+            `${import.meta.env.VITE_API_URL}/api/users/me?clerkId=${
+              clerkUser.id
+            }`
+          );
           if (response.ok) {
             const data = await response.json();
             setAppUser(data);

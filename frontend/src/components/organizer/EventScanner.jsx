@@ -50,11 +50,14 @@ const EventScannerPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/organizer/tickets/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qrCodeData, eventId, clerkId: user.id }),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/organizer/tickets/verify`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ qrCodeData, eventId, clerkId: user.id }),
+        }
+      );
 
       const data = await response.json();
       setScanResult(data);

@@ -15,7 +15,9 @@ const Category = () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(`/api/events?category=${categoryId}`);
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/events?category=${categoryId}`
+        );
         if (!response.ok) {
           throw new Error('Failed to fetch events');
         }

@@ -39,7 +39,9 @@ const EventDetailPage = () => {
     const fetchEventDetails = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/events/${eventId}`);
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/events/${eventId}`
+        );
         if (!response.ok) throw new Error('Event not found');
         const data = await response.json();
         setEvent(data);
@@ -62,11 +64,14 @@ const EventDetailPage = () => {
 
     if (event.pricing.isFree) {
         try {
-            const response = await fetch('/api/tickets/book', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+            const response = await fetch(
+              `${import.meta.env.VITE_API_URL}/api/tickets/book`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ eventId: event._id, clerkId: user.id }),
-            });
+              }
+            );
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Booking failed');
             
@@ -78,11 +83,14 @@ const EventDetailPage = () => {
     }
 
     try {
-        const orderResponse = await fetch('/api/payments/create-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+        const orderResponse = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/payments/create-order`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ eventId: event._id }),
-        });
+          }
+        );
 
         const orderData = await orderResponse.json();
         if (!orderResponse.ok) throw new Error(orderData.message || 'Could not create order.');
@@ -95,7 +103,7 @@ const EventDetailPage = () => {
             description: `Ticket for ${event.title}`,
             order_id: orderData.id,
             handler: async function (response) {
-                const verificationResponse = await fetch('/api/payments/verify-payment', {
+                const verificationResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/payments/verify-payment`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

@@ -84,7 +84,9 @@ const ManageEventPage = () => {
     const fetchEventDetails = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/events/${eventId}`);
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/events/${eventId}`
+        );
         if (!response.ok) throw new Error("Event not found.");
         const data = await response.json();
         setEvent(data);

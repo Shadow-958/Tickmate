@@ -25,8 +25,16 @@ export default function OrganizerDashboard() {
         try {
             setLoading(true);
             const [eventsRes, analyticsRes] = await Promise.all([
-                fetch(`/api/organizer/my-events?clerkId=${user.id}`),
-                fetch(`/api/organizer/analytics?clerkId=${user.id}`)
+              fetch(
+                `${
+                  import.meta.env.VITE_API_URL
+                }/api/organizer/my-events?clerkId=${user.id}`
+              ),
+              fetch(
+                `${
+                  import.meta.env.VITE_API_URL
+                }/api/organizer/analytics?clerkId=${user.id}`
+              ),
             ]);
             if (!eventsRes.ok || !analyticsRes.ok) throw new Error('Failed to fetch dashboard data.');
             const eventsData = await eventsRes.json();
@@ -45,11 +53,14 @@ export default function OrganizerDashboard() {
   const handleDeleteEvent = async (eventId) => {
     if (!window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) return;
     try {
-      const response = await fetch(`/api/organizer/my-events/${eventId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clerkId: user.id })
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/organizer/my-events/${eventId}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clerkId: user.id }),
+        }
+      );
       if (!response.ok) throw new Error('Failed to delete the event.');
       setEvents(prevEvents => prevEvents.filter(event => event._id !== eventId));
     } catch (err) {

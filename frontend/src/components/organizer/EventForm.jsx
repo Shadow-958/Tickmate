@@ -128,7 +128,10 @@ const EventForm = () => {
       submissionData.append('bannerImage', bannerImage);
     }
     try {
-      const response = await fetch('/api/events', { method: 'POST', body: submissionData });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/events`,
+        { method: "POST", body: submissionData }
+      );
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Failed to create the event. Please check server logs.' }));
         throw new Error(errorData.message);

@@ -23,7 +23,11 @@ const AttendeeListPage = () => {
     const fetchAttendees = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/organizer/events/${eventId}/attendees`);
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_API_URL
+          }/api/organizer/events/${eventId}/attendees`
+        );
         if (!response.ok) {
           throw new Error("Failed to fetch attendee list.");
         }

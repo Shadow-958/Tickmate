@@ -20,7 +20,11 @@ const MyBookingsPage = () => {
     const fetchBookings = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/tickets/my-bookings?clerkId=${user.id}`);
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/tickets/my-bookings?clerkId=${
+            user.id
+          }`
+        );
         if (!response.ok) throw new Error('Failed to fetch bookings.');
         
         const allBookings = await response.json();

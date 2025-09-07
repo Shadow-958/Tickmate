@@ -15,7 +15,7 @@ const OnboardingPage = () => {
     setError('');
 
     try {
-      const response = await fetch('/api/users/set-role', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/set-role`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clerkId: user.id, role: role }),

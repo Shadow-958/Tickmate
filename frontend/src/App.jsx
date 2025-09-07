@@ -5,7 +5,7 @@ import { SignIn, SignUp } from '@clerk/clerk-react';
 
 // Import all your page components
 import Navbar from './pages/navbar/Navbar';
-import LandingPage from './pages/landingpage/Landingpage';
+import LandingPage from './pages/landingpage/LandingPage';
 import OnboardingPage from './Auth/Onboardingpage';
 import EventDetailPage from './components/attendee/Eventdetails';
 import AllEvents from './components/attendee/AllEvents';
@@ -20,7 +20,7 @@ import ManageEventPage from './components/organizer/ManageEvent';
 import AttendeeListPage from './components/organizer/AttendeeList';
 import EventScannerPage from './components/organizer/EventScanner';
 import EventPreviewPage from './components/organizer/Eventpreview';
-import Footer from './pages/footer/footer';
+import Footer from './pages/footer/Footer';
 import Category from './components/attendee/Category';
 // import Feature from './components/features/Features';
 

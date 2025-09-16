@@ -44,7 +44,9 @@ const UpcomingEventsSection = () => {
     const fetchUpcomingEvents = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/events');
+        const response = await fetch(
+          "https://tapin-c0lk.onrender.com/api/events"
+        );
         if (!response.ok) {
           throw new Error('Could not fetch events.');
         }

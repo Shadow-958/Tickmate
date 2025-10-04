@@ -1,1 +1,23 @@
 @import "tailwindcss";
+/* Add this to your global CSS */
+body {
+  padding-top: 50px; /* Adjust this value based on your navbar height */
+}
+/* Or if you want to be more specific, target the main content area */
+.main-content {
+  padding-top: 80px;
+}
+
+/* Responsive navbar spacing */
+@media (max-width: 640px) {
+  body {
+    padding-top: 70px; /* Slightly less padding on mobile */
+  }
+}
+
+/* Responsive navbar spacing */
+@media (max-width: 640px) {
+  body {
+    padding-top: 70px; /* Slightly less padding on mobile */
+  }
+}

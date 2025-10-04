@@ -6,8 +6,6 @@ export const featuresMenu = {
     { id: "platform-overview", path: "/features/platform-overview", icon: <PlaceholderIcon />, title: "Platform Overview", description: "Manage all your events in one place" },
     { id: "event-website-builder", path: "/features/event-website-builder", icon: <PlaceholderIcon />, title: "Event Website Builder", description: "Create branded, custom pages" },
     { id: "event-registration", path: "/features/event-registration", icon: <PlaceholderIcon />, title: "Event Registration & Ticketing", description: "Simple registration, secure payments" },
-    { id: "event-agenda-builder", path: "/features/event-agenda-builder", icon: <PlaceholderIcon />, title: "Event Agenda Builder", description: "Multi-track interactive agenda" },
-    { id: "call-for-speakers", path: "/features/call-for-speakers", icon: <PlaceholderIcon />, title: "Call For Speakers", description: "Accept speaker proposals" },
     { id: "lead-capture", path: "/features/lead-capture", icon: <PlaceholderIcon />, title: "Lead Capture For Exhibitors", description: "Gather prospect information" },
   ],
   cta:null,

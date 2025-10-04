@@ -1,16 +1,18 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { SignIn, SignUp } from '@clerk/clerk-react';
 
 // Import all your page components
 import Navbar from './pages/navbar/Navbar';
 import LandingPage from './pages/landingpage/LandingPage';
-import OnboardingPage from './Auth/Onboardingpage';
-import EventDetailPage from './components/attendee/Eventdetails';
+import OnboardingPage from '../src/Auth/Onboardingpage';
+import EventDetail from './components/attendee/Eventdetails';
 import AllEvents from './components/attendee/AllEvents';
 import Confirmationpage from './components/attendee/Confirmation';
-import MyBookingsPage from './components/attendee/Dashboard';
+
+// ✅ FIXED: Import the correct MyBookings component
+import MyBookingsPage from './components/attendee/MyBooking';
+
 import AuthCallback from './Auth/AuthCallback';
 import EventForm from './components/organizer/EventForm';
 import NotFoundPage from './helper/Notfound';
@@ -20,10 +22,15 @@ import ManageEventPage from './components/organizer/ManageEvent';
 import AttendeeListPage from './components/organizer/AttendeeList';
 import EventScannerPage from './components/organizer/EventScanner';
 import EventPreviewPage from './components/organizer/Eventpreview';
-import Footer from './pages/footer/Footer';
 import Category from './components/attendee/Category';
-// import Feature from './components/features/Features';
 
+// Import new JWT auth components
+import Login from './components/auth/Login';
+import Register from './components/auth/Register';
+
+// NEW IMPORTS
+import ConditionalFooter from './components/layout/conditionalFooter';
+import StaffDashboard from './components/staff/StaffDashboard';
 
 const App = () => {
   return (
@@ -31,57 +38,69 @@ const App = () => {
       <Navbar />
       <Toaster position="top-center" reverseOrder={false} />
       <Routes>
+        {/* Public Routes */}
         <Route path='/' element={<LandingPage />} />
+        <Route path='/login' element={<Login />} />
+        <Route path='/register' element={<Register />} />
         <Route path='/onboarding' element={<OnboardingPage />} />
         <Route path='/auth-callback' element={<AuthCallback />} />
-        <Route path="/sign-in/*" element={<SignIn routing="path" path="/sign-in" afterSignInUrl="/auth-callback" />} />
-        <Route path="/sign-up/*" element={<SignUp routing="path" path="/sign-up" afterSignUpUrl="/onboarding" />} />
         <Route path='/allevents' element={<AllEvents />} />
         <Route path='/category/:categoryId' element={<Category />} />
-        {/* <Route path='/features/:featureId' element={<Feature />} /> */}
-        <Route path='/events/:eventId' element={<EventDetailPage />} />
+        <Route path='/events/:eventId' element={<EventDetail />} />
         <Route path='/confirmation' element={<Confirmationpage />} />
+
+        {/* ✅ FIXED: Attendee Protected Routes with correct component */}
         <Route path='/my-bookings' element={
-          <ProtectedRoute allowedRoles={['attendee']}>
+          <ProtectedRoute allowedRoles={['event_attendee']}>
             <MyBookingsPage />
           </ProtectedRoute>
         } />
 
+        {/* Host Protected Routes */}
         <Route path='/organizer-dashboard' element={
-          <ProtectedRoute allowedRoles={['organizer']}>
+          <ProtectedRoute allowedRoles={['event_host']}>
             <OrganizerDashboard />
           </ProtectedRoute>
         } />
         <Route path='/newEvent' element={
-          <ProtectedRoute allowedRoles={['organizer']}>
+          <ProtectedRoute allowedRoles={['event_host']}>
             <EventForm />
           </ProtectedRoute>
         } />
         <Route path='/create-success' element={
-          <ProtectedRoute allowedRoles={['organizer']}>
+          <ProtectedRoute allowedRoles={['event_host']}>
             <EventPreviewPage />
           </ProtectedRoute>
         } />
         <Route path='/manage-event/:eventId' element={
-          <ProtectedRoute allowedRoles={['organizer']}>
+          <ProtectedRoute allowedRoles={['event_host']}>
             <ManageEventPage />
           </ProtectedRoute>
         } />
         <Route path='/attendee-list/:eventId' element={
-          <ProtectedRoute allowedRoles={['organizer']}>
+          <ProtectedRoute allowedRoles={['event_host']}>
             <AttendeeListPage />
           </ProtectedRoute>
         } />
+        
+        {/* Scanner Route */}
         <Route path='/scanner/:eventId' element={
-          <ProtectedRoute allowedRoles={['organizer']}>
+          <ProtectedRoute allowedRoles={['event_host', 'event_staff']}>
             <EventScannerPage />
           </ProtectedRoute>
         } />
 
-        {/* --- Catch-all 404 Route --- */}
+        {/* Staff Protected Route */}
+        <Route path='/staff-dashboard' element={
+          <ProtectedRoute allowedRoles={['event_staff']}>
+            <StaffDashboard />
+          </ProtectedRoute>
+        } />
+
+        {/* Catch-all 404 */}
         <Route path='*' element={<NotFoundPage />} />
       </Routes>
-      <Footer/>
+      <ConditionalFooter />
     </div>
   );
 };

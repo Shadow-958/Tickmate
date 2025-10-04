@@ -44,7 +44,7 @@ const HeroSection = () => {
 
           {/* Sub-headline paragraph with better typography */}
           <p className="mt-6 max-w-3xl text-lg sm:text-xl leading-relaxed text-gray-300 hover:text-gray-200 transition-colors duration-300">
-            Launch your event site & mobile app in 
+            Launch your event in 
             <span className="text-cyan-400 font-semibold"> minutes</span>—no code, no clutter, no stress. 
             <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent font-semibold"> Powerful tools</span> to 
             boost registrations, manage sessions, engage attendees, and simplify check-in, without the steep learning curve or enterprise price tag.

@@ -1,7 +1,7 @@
+// src/components/attendee/Ticket.jsx
 import React from "react";
-import { useUser } from "@clerk/clerk-react";
+import { useAuth } from "../../contexts/AuthContext";
 import { CalendarIcon, LocationIcon } from "../../helper/Icons.jsx";
-
 
 // --- Helper function to format dates ---
 const formatDate = (dateString, options) => {
@@ -10,7 +10,7 @@ const formatDate = (dateString, options) => {
 
 // --- The Ticket Component (Enhanced Left Section) ---
 const Ticket = ({ event, ticket }) => {
-  const { user } = useUser();
+  const { user } = useAuth();
 
   if (!event || !ticket) {
     return (
@@ -29,7 +29,7 @@ const Ticket = ({ event, ticket }) => {
     hour: "2-digit",
     minute: "2-digit",
   });
-  const bookedOn = formatDate(ticket.purchaseDate, {
+  const bookedOn = formatDate(ticket.bookingDate || ticket.createdAt, {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -46,7 +46,7 @@ const Ticket = ({ event, ticket }) => {
       <div className="relative flex flex-col md:flex-row">
         {/* --- Enhanced Main Body Section --- */}
         <div className="flex-grow p-6 sm:p-8 flex flex-col justify-center">
-          
+
           {/* Event Title with enhanced styling */}
           <div className="mb-6">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight mb-2">
@@ -58,7 +58,7 @@ const Ticket = ({ event, ticket }) => {
 
           {/* Event Details - Card Style to match right section */}
           <div className="space-y-4">
-            
+
             {/* Date & Time Card */}
             <div className="p-4 bg-black/20 rounded-xl border border-gray-600/30 backdrop-blur-sm hover:border-cyan-400/40 transition-all duration-300 group/date">
               <div className="flex items-center">
@@ -81,7 +81,7 @@ const Ticket = ({ event, ticket }) => {
                 </div>
                 <div className="flex-grow">
                   <p className="text-xs uppercase tracking-wide text-purple-400 font-bold mb-1">Venue</p>
-                  <p className="font-bold text-white text-lg leading-tight">{event.location}</p>
+                  <p className="font-bold text-white text-lg leading-tight">{event.location.venue || event.location}</p>
                 </div>
               </div>
             </div>
@@ -102,7 +102,7 @@ const Ticket = ({ event, ticket }) => {
           <h2 className="text-xs uppercase tracking-widest text-cyan-400 font-bold mb-2">
             Scan at Entry
           </h2>
-          
+
           {/* --- QR CODE IMAGE --- */}
           <div className="bg-white p-2 rounded-lg">
             <img 
@@ -115,7 +115,7 @@ const Ticket = ({ event, ticket }) => {
           <div className="text-xs sm:text-sm text-gray-400 mt-4">
             <p>
               <span className="font-semibold">Admitted:</span>{" "}
-              {user?.fullName || 'Ticket Holder'}
+              {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'Ticket Holder'}
             </p>
             <p>
               <span className="font-semibold">Booked on:</span> {bookedOn}

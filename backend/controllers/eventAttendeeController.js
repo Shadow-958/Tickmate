@@ -324,13 +324,11 @@ const bookTicket = async (req, res) => {
   }
 };
 
-// @desc    Get user's tickets/bookings
+// @desc    Get user's tickets
 // @route   GET /api/attendee/my-tickets
 // @access  Private (attendee only)
 const getMyTickets = async (req, res) => {
   try {
-    console.log('📋 Fetching tickets for user:', req.user._id, `(${req.user.firstName} ${req.user.lastName})`);
-
     const attendeeId = req.user._id;
     const { status = 'all', upcoming = false } = req.query;
 
@@ -341,19 +339,17 @@ const getMyTickets = async (req, res) => {
       filter.status = status;
     }
 
-    // Get tickets with proper population
+    // Get tickets
     let tickets = await Ticket.find(filter)
+      .populate('eventId', 'title description startDateTime endDateTime location bannerImageUrl category host')
       .populate({
         path: 'eventId',
-        select: 'title description startDateTime endDateTime location bannerImageUrl category status capacity',
         populate: {
           path: 'host',
-          select: 'firstName lastName email'
+          select: 'firstName lastName email hostProfile'
         }
       })
-      .sort({ bookingDate: -1 }); // Most recent first
-
-    console.log(`Found ${tickets.length} tickets for user ${req.user.firstName}`);
+      .sort({ createdAt: -1 });
 
     // Filter upcoming events if requested
     if (upcoming) {
@@ -370,8 +366,8 @@ const getMyTickets = async (req, res) => {
       expired: tickets.filter(t => t.status === 'expired').length
     };
 
-    // ✅ FIXED: Format data to match Dashboard expectations
-    const bookings = tickets.map(ticket => {
+    // Add booking status to each ticket
+    const ticketsWithStatus = tickets.map(ticket => {
       let eventStatus = 'upcoming';
 
       if (ticket.eventId) {
@@ -385,61 +381,23 @@ const getMyTickets = async (req, res) => {
         }
       }
 
-      const canCancel = ticket.status === 'active' && 
-                       ticket.eventId && 
-                       new Date(ticket.eventId.startDateTime) > new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-      // Return in the format Dashboard expects
       return {
-        // Ticket properties
-        ticketId: ticket._id,
-        _id: ticket._id, // For backward compatibility
-        ticketNumber: ticket.ticketNumber,
-        qrCodeUrl: ticket.qrCodeUrl,
-        qrCodeData: ticket.qrCodeData,
-        status: ticket.status,
-        paymentStatus: ticket.paymentStatus,
-        pricePaid: ticket.pricePaid,
-        bookingDate: ticket.bookingDate,
-        checkInStatus: ticket.checkInStatus,
-        attendeeInfo: ticket.attendeeInfo,
-        
-        // Event properties in the format Dashboard expects
-        event: ticket.eventId ? {
-          id: ticket.eventId._id,
-          _id: ticket.eventId._id,
-          title: ticket.eventId.title,
-          description: ticket.eventId.description,
-          startDateTime: ticket.eventId.startDateTime,
-          endDateTime: ticket.eventId.endDateTime,
-          location: ticket.eventId.location,
-          bannerImageUrl: ticket.eventId.bannerImageUrl,
-          category: ticket.eventId.category,
-          status: ticket.eventId.status,
-          capacity: ticket.eventId.capacity,
-          host: ticket.eventId.host
-        } : null,
-        
-        // Additional metadata
+        ...ticket.toObject(),
         eventStatus,
-        canCancel
+        canCancel: ticket.status === 'active' && 
+                  ticket.eventId && 
+                  new Date(ticket.eventId.startDateTime) > new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours before
       };
     });
 
-    console.log(`📊 Returning ${bookings.length} formatted bookings`);
-
-    // ✅ FIXED: Return in the format Dashboard expects
     res.status(200).json({
       success: true,
-      count: bookings.length,
-      totalBookings: bookings.length,
+      count: ticketsWithStatus.length,
       summary: ticketsByStatus,
-      bookings, // ✅ Dashboard expects 'bookings' property
-      tickets: bookings // ✅ Also provide 'tickets' for backward compatibility
+      tickets: ticketsWithStatus
     });
-
   } catch (error) {
-    console.error('❌ Get my tickets error:', error);
+    console.error('Get my tickets error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error fetching tickets',

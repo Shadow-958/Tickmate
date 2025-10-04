@@ -99,16 +99,6 @@ if (mongoose.models.Ticket) {
       }
     },
 
-    // ADD this field to your ticket schema:
-    fraudCheck: {
-      riskScore: { type: Number },
-      riskLevel: { type: String, enum: ['MINIMAL', 'LOW', 'MEDIUM', 'HIGH'] },
-      action: { type: String, enum: ['ALLOW', 'MONITOR', 'ADDITIONAL_VERIFICATION', 'MANUAL_REVIEW', 'BLOCK'] },
-      reasons: [String],
-      timestamp: { type: Date, default: Date.now }
-    },
-
-
     // Verification tracking for event staff
     verification: {
       isScanned: { type: Boolean, default: false },

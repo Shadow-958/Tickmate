@@ -67,62 +67,19 @@ const userSchema = new mongoose.Schema({
     email: { type: Boolean, default: true },
     push: { type: Boolean, default: true },
     sms: { type: Boolean, default: false }
-  },
-
-  // NEW AI FEATURES - USER INTERACTION TRACKING
-  userInteractions: [{
-    eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event' },
-    interactionType: { type: String, enum: ['view', 'book', 'like', 'share'] },
-    timestamp: { type: Date, default: Date.now }
-  }],
-
-  // NEW AI FEATURES - USER PREFERENCES FOR RECOMMENDATIONS
-  preferences: {
-    categories: [String],
-    priceRange: {
-      min: Number,
-      max: Number
-    },
-    locationRadius: Number,
-    emailNotifications: { type: Boolean, default: true },
-    pushNotifications: { type: Boolean, default: true }
   }
 
 }, { timestamps: true });
 
-// ENHANCED INDEXES FOR AI FEATURES
+// Define indexes
 userSchema.index({ email: 1 });
 userSchema.index({ username: 1 });
 userSchema.index({ selectedRole: 1 });
-userSchema.index({ clerkId: 1 }, { unique: true, sparse: true });
-
-// NEW INDEXES FOR AI RECOMMENDATION PERFORMANCE
-userSchema.index({ 'userInteractions.eventId': 1 });
-userSchema.index({ 'userInteractions.interactionType': 1 });
-userSchema.index({ 'userInteractions.timestamp': -1 });
-userSchema.index({ 'preferences.categories': 1 });
-userSchema.index({ 'attendeeProfile.favoriteCategories': 1 });
+userSchema.index({ clerkId: 1 }, { unique: true, sparse: true }); // New sparse unique index
 
 // Virtual for full name
 userSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;
-});
-
-// NEW VIRTUAL FOR AI RECOMMENDATION SCORE
-userSchema.virtual('recommendationProfile').get(function() {
-  const recentInteractions = this.userInteractions
-    .filter(interaction => 
-      Date.now() - new Date(interaction.timestamp).getTime() < 30 * 24 * 60 * 60 * 1000 // Last 30 days
-    );
-
-  return {
-    totalInteractions: this.userInteractions.length,
-    recentInteractions: recentInteractions.length,
-    favoriteCategories: this.attendeeProfile.favoriteCategories,
-    preferredCategories: this.preferences.categories,
-    priceRange: this.preferences.priceRange,
-    engagementScore: Math.min(recentInteractions.length * 10, 100) // Score out of 100
-  };
 });
 
 // Pre-save middleware to update onboarding status
@@ -133,68 +90,6 @@ userSchema.pre('save', function(next) {
   next();
 });
 
-// NEW METHOD: Track user interaction for AI
-userSchema.methods.trackInteraction = function(eventId, interactionType) {
-  // Limit to last 100 interactions to prevent unlimited growth
-  if (this.userInteractions.length >= 100) {
-    this.userInteractions.shift(); // Remove oldest interaction
-  }
-  
-  this.userInteractions.push({
-    eventId,
-    interactionType,
-    timestamp: new Date()
-  });
-  
-  return this.save();
-};
-
-// NEW METHOD: Update user preferences based on interactions
-userSchema.methods.updatePreferencesFromInteractions = function() {
-  const categoryFrequency = {};
-  
-  // Count category interactions
-  this.userInteractions.forEach(interaction => {
-    if (interaction.eventId && interaction.eventId.category) {
-      const category = interaction.eventId.category;
-      categoryFrequency[category] = (categoryFrequency[category] || 0) + 1;
-    }
-  });
-  
-  // Update preferred categories (top 3)
-  const topCategories = Object.entries(categoryFrequency)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 3)
-    .map(([category]) => category);
-  
-  this.preferences.categories = topCategories;
-  this.attendeeProfile.favoriteCategories = topCategories;
-  
-  return this.save();
-};
-
-// NEW STATIC METHOD: Find users with similar preferences
-userSchema.statics.findSimilarUsers = function(userId, limit = 10) {
-  return this.aggregate([
-    { $match: { _id: { $ne: userId }, selectedRole: 'event_attendee' } },
-    {
-      $addFields: {
-        similarityScore: {
-          $size: {
-            $setIntersection: ['$preferences.categories', '$preferences.categories']
-          }
-        }
-      }
-    },
-    { $sort: { similarityScore: -1 } },
-    { $limit: limit }
-  ]);
-};
-
 module.exports = mongoose.models.User || mongoose.model('User', userSchema);
 
-console.log('🤖 Enhanced User model loaded with AI features:');
-console.log('   ✅ User Interaction Tracking');
-console.log('   ✅ AI Preference Management');
-console.log('   ✅ Recommendation Profile Generation');
-console.log('   ✅ Similarity Matching');
+console.log('Enhanced User model loaded successfully');

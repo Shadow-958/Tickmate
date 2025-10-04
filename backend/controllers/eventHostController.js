@@ -5,10 +5,6 @@ const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { cloudinary } = require('../cloudConfig');
 
-// ADD AI SERVICE IMPORTS
-const emailService = require('../services/emailService');
-const dynamicPricingService = require('../services/dynamicPricingService');
-
 // @desc    Get all events created by the host
 // @route   GET /api/host/my-events
 // @access  Private (host only)
@@ -76,7 +72,7 @@ const getMyEvents = async (req, res) => {
   }
 };
 
-// @desc    Create new event WITH AI ENHANCEMENTS
+// @desc    Create new event
 // @route   POST /api/host/events
 // @access  Private (host only)
 const createEvent = async (req, res) => {
@@ -178,7 +174,7 @@ const createEvent = async (req, res) => {
     await event.save();
 
     // Populate host and staff information
-    const newEvent = await Event.findById(event._id)
+    const populatedEvent = await Event.findById(event._id)
       .populate('host', 'firstName lastName email hostProfile')
       .populate('assignedStaff', 'firstName lastName email');
 
@@ -187,58 +183,13 @@ const createEvent = async (req, res) => {
       $inc: { 'hostProfile.eventsCreated': 1 }
     });
 
-    // AI ENHANCEMENTS START HERE
-
-    console.log('🤖 Applying AI enhancements to new event...');
-
-    try {
-      // Send email notification to host
-      console.log('📧 Sending event creation notification...');
-      await emailService.sendEventCreatedNotification(
-        req.user.email,
-        {
-          ...newEvent.toObject(),
-          hostName: `${req.user.firstName} ${req.user.lastName}`
-        }
-      );
-
-      // Schedule email reminders for the event
-      console.log('⏰ Scheduling event reminders...');
-      await emailService.scheduleEventReminders(newEvent._id);
-
-      // If dynamic pricing is enabled, start monitoring
-      if (newEvent.pricing && !newEvent.pricing.isFree) {
-        console.log('💰 Starting dynamic pricing monitoring...');
-        console.log(`Started dynamic pricing monitoring for event ${newEvent._id}`);
-        
-        // Initialize base price for dynamic pricing
-        await Event.findByIdAndUpdate(newEvent._id, {
-          'pricing.basePrice': newEvent.pricing.price,
-          'pricing.enableDynamicPricing': true,
-          'pricing.minPrice': Math.round(newEvent.pricing.price * 0.7),
-          'pricing.maxPrice': Math.round(newEvent.pricing.price * 2.5)
-        });
-      }
-
-    } catch (aiError) {
-      console.error('❌ AI enhancement error (non-blocking):', aiError);
-      // Don't fail event creation if AI features fail
-    }
-
-    console.log('✅ Event created successfully with AI enhancements');
-
     res.status(201).json({
       success: true,
       message: 'Event created successfully',
-      event: newEvent,
-      aiFeatures: {
-        emailNotificationSent: true,
-        remindersScheduled: true,
-        dynamicPricingEnabled: !newEvent.pricing.isFree
-      }
+      event: populatedEvent
     });
   } catch (error) {
-    console.error('❌ Create event error:', error);
+    console.error('Create event error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error creating event',
@@ -627,16 +578,12 @@ const getEventAnalytics = async (req, res) => {
   }
 };
 
-// COMPLETE EXPORT WITH ALL FUNCTIONS
+
 module.exports = {
   getMyEvents,
   createEvent,
   updateEvent,
   deleteEvent,
   getEventAttendees,
-  getHostAnalytics,
-  getEventAnalytics
+  getHostAnalytics
 };
-
-console.log('🎯 Event Host controller loaded with AI enhancements:', Object.keys(module.exports));
-console.log('🤖 AI Features: Email Notifications ✅ | Dynamic Pricing ✅ | Event Analytics ✅');

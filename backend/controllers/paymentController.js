@@ -1,133 +1,55 @@
-const Event = require('../models/Event');
-const User = require('../models/User');
+const crypto = require('crypto');
 
-// Try to load Booking model with fallback
-let Booking;
-try {
-  Booking = require('../models/Booking');
-  console.log('✅ Booking model loaded in payment controller');
-} catch (error) {
-  console.warn('⚠️ Booking model not found in payment controller');
-  Booking = null;
-}
-
-// Generate demo order ID
-const generateDemoOrderId = () => {
-  return `ORDER_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-};
-
-// Generate demo payment ID
-const generateDemoPaymentId = () => {
-  return `PAY_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-};
+// Simple payment controller with demo functionality
+console.log('💳 Loading payment controller...');
 
 // @desc    Create demo payment order
 // @route   POST /api/payments/create-demo-payment
 // @access  Private (attendee only)
 const createDemoPayment = async (req, res) => {
   try {
-    const { eventId, quantity = 1 } = req.body;
-    const userId = req.user._id || req.user.id;
+    console.log('💳 Creating demo payment for user:', req.user._id);
 
-    console.log('💳 Creating demo payment order:', {
-      eventId,
-      quantity,
-      userId: userId,
-      userRole: req.user.selectedRole
-    });
+    const { eventId, paymentMethod = 'credit_card' } = req.body;
+    const userId = req.user._id;
 
-    // Validate required fields
-    if (!eventId || !quantity) {
+    if (!eventId) {
       return res.status(400).json({
         success: false,
-        message: 'Event ID and quantity are required'
+        message: 'Event ID is required'
       });
     }
 
-    // Find the event
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({
-        success: false,
-        message: 'Event not found'
-      });
-    }
+    // Generate demo payment identifiers
+    const paymentId = `DEMO_${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
+    const transactionId = `TXN_${crypto.randomBytes(12).toString('hex').toUpperCase()}`;
+    const orderId = `ORD_${Date.now()}_${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
-    // Check if event is still bookable
-    const now = new Date();
-    if (new Date(event.startDateTime) <= now) {
-      return res.status(400).json({
-        success: false,
-        message: 'Event has already started or ended'
-      });
-    }
+    // Demo amount (in real app, get from event)
+    const amount = 50.00;
 
-    // Calculate amount (in paise for INR, or cents for USD)
-    const unitPrice = event.pricing?.price || 0;
-    const totalAmount = unitPrice * quantity * 100; // Convert to paise/cents
+    console.log('✅ Demo payment created:', paymentId);
 
-    // Generate demo order details
-    const orderId = generateDemoOrderId();
-    const paymentId = generateDemoPaymentId();
-
-    // Create demo payment order response
-    const demoOrder = {
-      orderId,
-      paymentId,
-      amount: totalAmount,
-      currency: 'INR',
-      eventId,
-      eventTitle: event.title,
-      quantity,
-      unitPrice,
-      totalAmount,
-      attendeeId: userId,
-      status: 'created',
-      createdAt: new Date().toISOString(),
-      // Demo payment gateway simulation
-      gateway: 'demo',
-      description: `Ticket booking for ${event.title}`,
-      notes: {
-        eventId,
-        attendeeId: userId,
-        quantity: quantity.toString()
-      }
-    };
-
-    console.log('✅ Demo payment order created:', {
-      orderId,
-      paymentId,
-      amount: totalAmount,
-      eventTitle: event.title
-    });
-
-    res.json({
+    res.status(201).json({
       success: true,
       message: 'Demo payment order created successfully',
-      order: demoOrder,
-      // Frontend needs these for payment processing
-      key: 'demo_key_for_testing',
-      orderId,
-      paymentId,
-      amount: totalAmount,
-      currency: 'INR',
-      name: 'Tickmate Event Platform',
-      description: `Ticket for ${event.title}`,
-      prefill: {
-        name: `${req.user.firstName} ${req.user.lastName}`,
-        email: req.user.email,
-        contact: req.user.phone || ''
-      },
-      theme: {
-        color: '#06b6d4'
+      payment: {
+        paymentId,
+        orderId,
+        transactionId,
+        amount,
+        currency: 'USD',
+        status: 'pending',
+        paymentMethod,
+        eventId,
+        userId: userId.toString()
       }
     });
-
   } catch (error) {
-    console.error('❌ Error creating demo payment:', error);
+    console.error('❌ Create demo payment error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to create payment order',
+      message: 'Server error creating demo payment',
       error: error.message
     });
   }
@@ -138,133 +60,62 @@ const createDemoPayment = async (req, res) => {
 // @access  Private (attendee only)
 const verifyDemoPayment = async (req, res) => {
   try {
-    const { orderId, paymentId, signature, eventId, quantity = 1 } = req.body;
-    const userId = req.user._id || req.user.id;
+    console.log('🔍 Verifying demo payment...');
 
-    console.log('🔍 Verifying demo payment for user:', req.user.firstName, req.user.selectedRole);
-    console.log('💳 Payment details:', {
-      orderId,
-      paymentId,
-      eventId,
-      quantity,
-      userId
-    });
+    const { paymentId, cardDetails } = req.body;
+    const userId = req.user._id;
 
-    // Validate required fields
-    if (!orderId || !paymentId || !eventId) {
+    if (!paymentId) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required payment details (orderId, paymentId, eventId)'
+        message: 'Payment ID is required'
       });
     }
 
-    // Find the event
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({
-        success: false,
-        message: 'Event not found'
-      });
-    }
+    // Simulate payment processing delay
+    const processingTime = Math.floor(Math.random() * 2000) + 1000; // 1-3 seconds
 
-    // **DEMO PAYMENT SIMULATION - ALWAYS SUCCESS** 
-    console.log('🛡️ Running demo payment verification...');
-    
-    // For demo purposes, we'll simulate different outcomes based on order ID
-    // In production, you would verify with actual payment gateway
-    
-    let paymentSuccess = true;
-    let failureReason = null;
+    await new Promise(resolve => setTimeout(resolve, processingTime));
 
-    // Simulate occasional failures for testing (you can remove this)
-    if (orderId.includes('FAIL')) {
-      paymentSuccess = false;
-      failureReason = 'Simulated payment failure for testing';
-    }
+    // Demo success rate (95% success)
+    const isSuccessful = Math.random() > 0.05;
 
-    if (!paymentSuccess) {
-      console.log('❌ Demo payment failed (simulated):', orderId);
-      return res.status(400).json({
-        success: false,
-        message: failureReason || 'Payment verification failed'
-      });
-    }
+    if (isSuccessful) {
+      console.log('✅ Demo payment successful:', paymentId);
 
-    // **PAYMENT SUCCESSFUL - CREATE BOOKING**
-    console.log('✅ Demo payment verified successfully:', paymentId);
+      // Generate demo ticket number
+      const ticketNumber = `TCK${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
-    let booking = null;
-
-    // Create booking if Booking model is available
-    if (Booking) {
-      try {
-        const bookingData = {
-          eventId,
-          attendeeId: userId,
-          ticketNumber: `TK${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
-          quantity: parseInt(quantity),
-          unitPrice: event.pricing?.price || 0,
-          totalAmount: (event.pricing?.price || 0) * parseInt(quantity),
-          currency: 'INR',
-          paymentStatus: 'completed',
-          paymentMethod: 'demo',
+      res.status(200).json({
+        success: true,
+        message: 'Demo payment verified successfully! Ticket created.',
+        payment: {
           paymentId,
-          paymentDate: new Date(),
-          status: 'active',
-          attendeeDetails: {
-            firstName: req.user.firstName,
-            lastName: req.user.lastName,
-            email: req.user.email,
-            phone: req.user.phone
-          },
-          bookingSource: 'web',
-          bookedAt: new Date()
-        };
-
-        booking = new Booking(bookingData);
-        await booking.save();
-
-        console.log('🎫 Booking created successfully:', booking.ticketNumber);
-      } catch (bookingError) {
-        console.error('❌ Error creating booking:', bookingError);
-        // Continue anyway - payment was successful
-      }
+          transactionId: `TXN_${crypto.randomBytes(6).toString('hex').toUpperCase()}`,
+          status: 'completed',
+          amount: 50.00,
+          completedAt: new Date()
+        },
+        ticket: {
+          ticketNumber,
+          qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${ticketNumber}`,
+          status: 'active'
+        }
+      });
     } else {
-      console.warn('⚠️ Booking model not available - payment verified but no booking created');
+      console.log('❌ Demo payment failed:', paymentId);
+
+      res.status(400).json({
+        success: false,
+        message: 'Demo payment failed - Please try again',
+        error: 'Insufficient funds (demo)'
+      });
     }
-
-    // Success response
-    res.json({
-      success: true,
-      message: 'Payment verified and booking created successfully',
-      payment: {
-        orderId,
-        paymentId,
-        status: 'completed',
-        amount: (event.pricing?.price || 0) * parseInt(quantity),
-        currency: 'INR',
-        verifiedAt: new Date().toISOString()
-      },
-      booking: booking ? {
-        _id: booking._id,
-        ticketNumber: booking.ticketNumber,
-        eventId: booking.eventId,
-        quantity: booking.quantity,
-        status: booking.status
-      } : null,
-      event: {
-        _id: event._id,
-        title: event.title,
-        startDateTime: event.startDateTime,
-        location: event.location
-      }
-    });
-
   } catch (error) {
-    console.error('❌ Payment verification error:', error);
+    console.error('❌ Verify demo payment error:', error);
     res.status(500).json({
       success: false,
-      message: 'Payment processing failed - Please try again',
+      message: 'Server error verifying demo payment',
       error: error.message
     });
   }
@@ -275,39 +126,49 @@ const verifyDemoPayment = async (req, res) => {
 // @access  Private
 const getPaymentStatus = async (req, res) => {
   try {
+    console.log('📊 Getting payment status...');
+
     const { paymentId } = req.params;
+    const userId = req.user._id;
 
-    console.log('📊 Fetching payment status for:', paymentId);
+    if (!paymentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment ID is required'
+      });
+    }
 
-    // In a real application, you would query your payment gateway
-    // For demo purposes, we'll simulate a successful payment
-    const demoPaymentStatus = {
-      paymentId,
-      status: 'completed',
-      amount: 500, // Demo amount
-      currency: 'INR',
-      method: 'demo',
-      createdAt: new Date().toISOString(),
-      completedAt: new Date().toISOString()
-    };
-
-    res.json({
+    // Demo payment status response
+    res.status(200).json({
       success: true,
-      payment: demoPaymentStatus
+      payment: {
+        paymentId,
+        transactionId: `TXN_${crypto.randomBytes(6).toString('hex').toUpperCase()}`,
+        orderId: `ORD_${Date.now()}`,
+        amount: 50.00,
+        currency: 'USD',
+        status: 'completed',
+        paymentMethod: 'credit_card',
+        initiatedAt: new Date(Date.now() - 300000), // 5 minutes ago
+        completedAt: new Date(),
+        userId: userId.toString()
+      }
     });
-
   } catch (error) {
-    console.error('❌ Error fetching payment status:', error);
+    console.error('❌ Get payment status error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch payment status',
+      message: 'Server error fetching payment status',
       error: error.message
     });
   }
 };
 
+// CRITICAL: Export all functions
 module.exports = {
   createDemoPayment,
   verifyDemoPayment,
   getPaymentStatus
 };
+
+console.log('💳 Payment controller loaded with functions:', Object.keys(module.exports));

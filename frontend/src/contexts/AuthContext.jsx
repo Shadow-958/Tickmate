@@ -98,7 +98,8 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     isHost: user?.selectedRole === 'event_host',
     isAttendee: user?.selectedRole === 'event_attendee',
-    isStaff: user?.selectedRole === 'event_staff'
+    isStaff: user?.selectedRole === 'event_staff',
+    isOnboardingCompleted: user?.onboardingCompleted || false
   };
 
   return (

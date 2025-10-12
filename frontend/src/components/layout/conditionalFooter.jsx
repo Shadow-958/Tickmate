@@ -9,10 +9,12 @@ const ConditionalFooter = () => {
 
   // Pages where footer should NOT appear
   const hideFooterPaths = [
+    '/confirmation',
+    '/events',
     '/allevents',
     '/login',
     '/register',
-    '/organizer-dashboard',
+    '/staff/attendance',
     '/staff-dashboard', 
     '/my-bookings',
     '/scanner',

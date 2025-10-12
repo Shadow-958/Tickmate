@@ -61,6 +61,20 @@ export default function Footer() {
         <div className="container mx-auto px-4 py-12">
 
 
+          {/* --- About Section --- */}
+          <div id="about" className="mb-16">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-white mb-6">About TickMate</h2>
+              <div className="max-w-4xl mx-auto">
+                <p className="text-gray-300 text-lg leading-relaxed mb-6">
+                  TickMate is a revolutionary event management platform designed to streamline the entire event lifecycle, 
+                  from creation to execution. Built with modern technology and user-centric design, TickMate empowers 
+                  event organizers, attendees, and staff with powerful tools and seamless experiences.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* --- Creator Cards Section --- */}
           <div className="mb-16">
             <div className="text-center mb-12">

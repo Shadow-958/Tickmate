@@ -1,8 +1,7 @@
-// src/components/staff/StaffDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { QrCodeIcon, UsersIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from '../../helper/Icons.jsx';
+import { QrCodeIcon, UsersIcon, CheckCircleIcon, ClockIcon } from '../../helper/Icons.jsx';
 import apiClient from '../../utils/apiClient';
 
 const StaffDashboard = () => {
@@ -24,18 +23,17 @@ const StaffDashboard = () => {
       
       console.log('📊 Fetching staff dashboard data...');
       
-      // Use the correct endpoint from your staff routes
       const response = await apiClient.get('/api/staff/dashboard');
       
       console.log('✅ Dashboard data loaded:', response);
       
       setDashboardData(response.data || response);
       
-      // Set first event as selected if available
-      if (response.data?.assignedEvents?.length > 0 && !selectedEvent) {
-        setSelectedEvent(response.data.assignedEvents[0]);
+      // ✅ FIXED: Use assignedEvents from the response
+      const events = response.assignedEvents || response.data?.assignedEvents || [];
+      if (events.length > 0 && !selectedEvent) {
+        setSelectedEvent(events[0]);
       }
-      
     } catch (error) {
       console.error('❌ Error fetching dashboard data:', error);
       setError(error.message || 'Failed to load dashboard data');
@@ -87,16 +85,22 @@ const StaffDashboard = () => {
     </div>
   );
 
+  // ✅ FIXED: Updated navigation functions
   const handleOpenScanner = (eventId) => {
     if (eventId) {
-      navigate(`/scanner/${eventId}`);
+      navigate(`/staff/scanner/${eventId}`);
     }
   };
 
   const handleViewAttendees = (eventId) => {
     if (eventId) {
-      navigate(`/attendee-list/${eventId}`);
+      navigate(`/staff/attendance/${eventId}`);
     }
+  };
+
+  // ✅ NEW: Navigate to My Events
+  const handleViewAllEvents = () => {
+    navigate('/staff/my-events');
   };
 
   if (loading) {
@@ -128,9 +132,10 @@ const StaffDashboard = () => {
     );
   }
 
-  const stats = dashboardData?.stats || {};
-  const assignedEvents = dashboardData?.assignedEvents || [];
-  const todaysEvents = dashboardData?.todaysEvents || [];
+  const stats = dashboardData?.dashboard || {};
+  // ✅ FIXED: Get assignedEvents from the correct location
+  const assignedEvents = dashboardData?.assignedEvents || dashboardData?.dashboard?.assignedEvents || [];
+  const todaysEvents = stats.todaysEvents || [];
   const recentScans = dashboardData?.recentScans || [];
 
   return (
@@ -152,23 +157,23 @@ const StaffDashboard = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard 
             title="Assigned Events" 
-            value={stats.assignedEvents || 0}
+            value={stats.assignedEventsCount || 0}
             icon={UsersIcon}
           />
           <StatCard 
             title="Today's Events" 
-            value={stats.todaysEvents || 0}
+            value={stats.todaysEventsCount || 0}
             icon={ClockIcon}
             color="text-blue-400"
           />
           <StatCard 
-            title="Total Scans Today" 
-            value={stats.totalScansToday || 0}
+            title="Total Scans" 
+            value={stats.totalScansPerformed || 0}
             icon={QrCodeIcon}
           />
           <StatCard 
-            title="Recent Scans" 
-            value={stats.recentScans || 0}
+            title="Recent Activity" 
+            value={recentScans.length || 0}
             icon={CheckCircleIcon}
             color="text-green-400"
           />
@@ -178,7 +183,17 @@ const StaffDashboard = () => {
           {/* Assigned Events */}
           <div className="lg:col-span-1">
             <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-6">
-              <h2 className="text-xl font-bold text-white mb-4">Assigned Events</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-white">Assigned Events</h2>
+                {assignedEvents.length > 0 && (
+                  <button
+                    onClick={handleViewAllEvents}
+                    className="text-cyan-400 hover:text-cyan-300 text-sm underline transition-colors"
+                  >
+                    View All
+                  </button>
+                )}
+              </div>
 
               {assignedEvents.length === 0 ? (
                 <div className="text-center py-8">
@@ -190,7 +205,7 @@ const StaffDashboard = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {assignedEvents.map(event => (
+                  {assignedEvents.slice(0, 5).map(event => (
                     <div 
                       key={event._id}
                       onClick={() => setSelectedEvent(event)}
@@ -211,13 +226,13 @@ const StaffDashboard = () => {
                       <p className="text-xs text-gray-500">
                         {event.location?.venue || event.location || 'Venue TBD'}
                       </p>
-                      {event.statistics && (
+                      {event.stats && (
                         <div className="mt-2 flex justify-between text-xs">
                           <span className="text-green-400">
-                            ✓ {event.statistics.scannedTickets || 0} scanned
+                            ✓ {event.stats.scannedTickets || 0} scanned
                           </span>
                           <span className="text-gray-400">
-                            📋 {event.statistics.totalTickets || 0} total
+                            📋 {event.stats.totalTickets || 0} total
                           </span>
                         </div>
                       )}
@@ -243,7 +258,15 @@ const StaffDashboard = () => {
                   className="w-full bg-gray-700 text-white font-medium rounded-lg px-4 py-3 transition-all hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <UsersIcon className="h-5 w-5 inline mr-2" />
-                  View Attendees
+                  View Attendance
+                </button>
+
+                {/* ✅ NEW: View All Events Button */}
+                <button 
+                  onClick={handleViewAllEvents}
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg px-4 py-3 transition-all hover:from-purple-500 hover:to-blue-500"
+                >
+                  📋 View All My Events
                 </button>
               </div>
             </div>
@@ -351,30 +374,28 @@ const StaffDashboard = () => {
                 </div>
 
                 <div>
-                  <h3 className="font-semibold text-gray-300 mb-2">Check-in Statistics</h3>
-                  {selectedEvent.statistics ? (
+                  <h3 className="font-semibold text-gray-300 mb-2">Scan Statistics</h3>
+                  {selectedEvent.stats ? (
                     <>
                       <p className="text-sm text-gray-400">
-                        <strong>Total Tickets:</strong> {selectedEvent.statistics.totalTickets}
+                        <strong>Total Tickets:</strong> {selectedEvent.stats.totalTickets || 0}
                       </p>
                       <p className="text-sm text-gray-400">
-                        <strong>Scanned:</strong> {selectedEvent.statistics.scannedTickets}
+                        <strong>Scanned:</strong> {selectedEvent.stats.scannedTickets || 0}
                       </p>
                       <p className="text-sm text-gray-400">
-                        <strong>Pending:</strong> {selectedEvent.statistics.pendingScans}
+                        <strong>Remaining:</strong> {selectedEvent.stats.unscannedTickets || 0}
                       </p>
                       <div className="w-full bg-gray-700 rounded-full h-2 mt-3">
                         <div 
                           className="bg-cyan-400 h-2 rounded-full transition-all duration-300"
                           style={{
-                            width: `${selectedEvent.statistics.totalTickets ? 
-                              (selectedEvent.statistics.scannedTickets / selectedEvent.statistics.totalTickets * 100) : 0}%`
+                            width: `${parseFloat(selectedEvent.stats.scanPercentage) || 0}%`
                           }}
                         ></div>
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
-                        {selectedEvent.statistics.totalTickets ? 
-                          Math.round((selectedEvent.statistics.scannedTickets / selectedEvent.statistics.totalTickets * 100)) : 0}% complete
+                        {selectedEvent.stats.scanPercentage || 0}% complete
                       </p>
                     </>
                   ) : (
@@ -389,7 +410,7 @@ const StaffDashboard = () => {
                       onClick={() => handleViewAttendees(selectedEvent._id)}
                       className="w-full bg-gray-800 text-white text-sm px-3 py-2 rounded hover:bg-gray-700 transition-colors"
                     >
-                      📋 View Attendee List
+                      📋 View Attendance List
                     </button>
                     <button 
                       onClick={() => handleOpenScanner(selectedEvent._id)}

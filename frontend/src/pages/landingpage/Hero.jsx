@@ -1,3 +1,5 @@
+// src/components/Hero.jsx - FIXED VERSION
+
 import React from "react";
 
 export default function Hero() {
@@ -6,7 +8,8 @@ export default function Hero() {
 
 const HeroSection = () => {
   return (
-    <div className="relative bg-gradient-to-br from-black via-gray-900 to-black text-white overflow-hidden">
+    <div className="relative bg-gradient-to-br from-black via-gray-900 to-black text-white overflow-hidden min-h-screen">
+      {/* ✅ FIXED: Remove top padding and add proper navbar offset */}
       <div className="absolute inset-0">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
@@ -15,8 +18,9 @@ const HeroSection = () => {
 
       <div className="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.1)_1px,transparent_1px)] bg-[size:50px_50px] opacity-20"></div>
 
-      <div className="container mx-auto px-4 py-12 sm:py-32 lg:py-40 relative z-10">
-        <div className="flex flex-col items-center text-center">
+      {/* ✅ FIXED: Proper spacing for fixed navbar */}
+      <div className="container mx-auto px-4 pt-24 pb-12 sm:pt-32 sm:pb-16 lg:pt-40 lg:pb-20 relative z-10">
+        <div className="flex flex-col items-center text-center min-h-[calc(100vh-6rem)]">
           <div className="group mb-6">
             <div className="relative inline-block">
               <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-blue-600/20 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -37,12 +41,10 @@ const HeroSection = () => {
               </span>
             </h1>
             
-            {/* Decorative elements */}
             <div className="absolute -top-4 -right-4 w-8 h-8 border-2 border-cyan-400 rounded-full opacity-60 animate-bounce" style={{ animationDelay: '0.5s' }}></div>
             <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-blue-500 rounded-full opacity-60 animate-pulse" style={{ animationDelay: '1s' }}></div>
           </div>
 
-          {/* Sub-headline paragraph with better typography */}
           <p className="mt-6 max-w-3xl text-lg sm:text-xl leading-relaxed text-gray-300 hover:text-gray-200 transition-colors duration-300">
             Launch your event in 
             <span className="text-cyan-400 font-semibold"> minutes</span>—no code, no clutter, no stress. 
@@ -50,7 +52,6 @@ const HeroSection = () => {
             boost registrations, manage sessions, engage attendees, and simplify check-in, without the steep learning curve or enterprise price tag.
           </p>
 
-          {/* Enhanced badges/indicators with better interactions */}
           <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
             <div className="group relative">
               <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full blur opacity-75 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -73,10 +74,8 @@ const HeroSection = () => {
                 <span className="text-white font-bold text-sm sm:text-base">Mobile Ready</span>
               </div>
             </div>
-            
           </div>
 
-          {/* Enhanced trust indicator with animation */}
           <div className="mt-8 relative">
             <div className="flex items-center justify-center space-x-2 text-sm text-gray-400 hover:text-gray-300 transition-colors duration-300">
               <div className="flex space-x-1">
@@ -89,14 +88,12 @@ const HeroSection = () => {
               <span className="font-semibold">Trusted by thousands of event organizers worldwide</span>
             </div>
             
-            {/* Floating particles */}
             <div className="absolute -top-2 left-1/4 w-2 h-2 bg-cyan-400 rounded-full opacity-60 animate-float"></div>
             <div className="absolute -top-4 right-1/3 w-1 h-1 bg-blue-500 rounded-full opacity-40 animate-float" style={{ animationDelay: '2s' }}></div>
           </div>
         </div>
       </div>
 
-      {/* Bottom gradient fade */}
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black to-transparent"></div>
 
       <style jsx>{`

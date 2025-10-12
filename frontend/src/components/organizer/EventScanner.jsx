@@ -1,15 +1,17 @@
-// src/components/scanner/EventScanner.jsx
+// src/components/scanner/EventScanner.jsx - UPDATED WITH ATTENDEE LIST INTEGRATION
+
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { useAuth } from '../../contexts/AuthContext';
 import apiClient from '../../utils/apiClient';
 import toast from 'react-hot-toast';
 
-const EventScanner = () => {
+const EventScanner = ({ onScanSuccess }) => {
   const { eventId } = useParams();
   const { user } = useAuth();
-  
+  const navigate = useNavigate();
+
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,13 +29,10 @@ const EventScanner = () => {
         setLoading(true);
         setError(null);
 
-        console.log('🎯 Fetching event for scanner:', eventId);
-
-        // Try multiple endpoints in order of preference
         const endpoints = [
-          `/api/host/events/${eventId}`,    // Host-specific (preferred)
-          `/api/events/${eventId}`,         // General fallback
-          `/api/attendee/events/${eventId}` // Attendee fallback
+          `/api/host/events/${eventId}`,
+          `/api/events/${eventId}`,
+          `/api/attendee/events/${eventId}`
         ];
 
         let eventData = null;
@@ -41,52 +40,35 @@ const EventScanner = () => {
 
         for (const endpoint of endpoints) {
           try {
-            console.log(`🔍 Trying endpoint: ${endpoint}`);
             const response = await apiClient.get(endpoint);
             eventData = response.event || response.data || response;
-            
-            if (eventData) {
-              console.log(`✅ Successfully fetched from: ${endpoint}`);
-              break;
-            }
+            if (eventData) break;
           } catch (error) {
-            console.log(`❌ Failed endpoint: ${endpoint}`, error.message);
             lastError = error;
             continue;
           }
         }
 
-        if (!eventData) {
-          throw lastError || new Error('Event not found in any endpoint');
-        }
-
+        if (!eventData) throw lastError || new Error('Event not found in any endpoint');
         setEvent(eventData);
-        
       } catch (error) {
-        console.error('❌ All endpoints failed:', error);
         setError('Event not found or access denied');
       } finally {
         setLoading(false);
       }
     };
 
-    if (eventId) {
-      fetchEventDetails();
-    }
+    if (eventId) fetchEventDetails();
   }, [eventId]);
 
   const initializeScanner = () => {
-    if (html5QrcodeScannerRef.current) {
-      html5QrcodeScannerRef.current.clear();
-    }
-
+    if (html5QrcodeScannerRef.current) html5QrcodeScannerRef.current.clear();
     const config = {
       fps: 10,
       qrbox: { width: 250, height: 250 },
       aspectRatio: 1.0,
       disableFlip: false
     };
-
     const scanner = new Html5QrcodeScanner('qr-scanner', config, false);
     html5QrcodeScannerRef.current = scanner;
 
@@ -95,19 +77,17 @@ const EventScanner = () => {
         handleScanSuccess(decodedText);
         scanner.pause(true);
         setTimeout(() => {
-          if (html5QrcodeScannerRef.current) {
-            scanner.resume();
-          }
+          if (html5QrcodeScannerRef.current) scanner.resume();
         }, 3000);
       },
       (error) => {
-        // Silent handling of scan errors
-        console.log('Scan error (normal):', error);
+        // Suppress NotFoundException logs to prevent spam
+        if (!(error?.name === 'NotFoundException' || (typeof error === 'string' && error.includes('NotFoundException')))) {
+          console.warn('Scanner error:', error);
+        }
       }
     );
-
     setScanning(true);
-    console.log('✅ QR Scanner initialized successfully');
   };
 
   const stopScanner = () => {
@@ -120,15 +100,12 @@ const EventScanner = () => {
 
   const handleScanSuccess = async (ticketNumber) => {
     try {
-      console.log('🎫 Scanning ticket:', ticketNumber, 'User role:', user?.selectedRole);
       setScanResult({ status: 'processing', ticketNumber });
-
-      // FIXED: Use correct endpoint based on user role
       const scanEndpoint = user?.selectedRole === 'event_host' 
-        ? '/api/host/scan-ticket'    // ✅ Host endpoint
-        : '/api/staff/scan-ticket';  // Staff endpoint
+        ? '/api/host/scan-ticket'
+        : '/api/staff/scan-ticket';
 
-      console.log(`📡 Using scan endpoint: ${scanEndpoint} for role: ${user?.selectedRole}`);
+      console.log('🎫 Scanning ticket:', ticketNumber, 'for event:', eventId);
 
       const response = await apiClient.post(scanEndpoint, {
         eventId,
@@ -142,26 +119,41 @@ const EventScanner = () => {
           ticketNumber,
           message: response.message,
           attendee: response.ticket?.attendee,
-          timestamp: new Date(), // ✅ Always create new Date object
+          timestamp: new Date(),
           pricePaid: response.ticket?.pricePaid
         };
-
         setScanResult(result);
         setRecentScans(prev => [result, ...prev.slice(0, 4)]);
         toast.success(`✅ ${response.message}`);
+
+        // ✅ CRITICAL: Trigger attendee list refresh after successful scan
+        console.log('✅ Scan successful, triggering attendee list refresh...');
+        
+        // Method 1: If callback prop is provided
+        if (onScanSuccess) {
+          console.log('📡 Calling onScanSuccess callback');
+          onScanSuccess();
+        }
+
+        // Method 2: Use custom event to notify other components
+        window.dispatchEvent(new CustomEvent('attendeeScanned', {
+          detail: { eventId, ticketNumber, attendee: response.ticket?.attendee }
+        }));
+
+        // Method 3: Store scan timestamp in localStorage to trigger refresh
+        localStorage.setItem(`lastScan_${eventId}`, Date.now().toString());
+
       } else {
         throw new Error(response.message || 'Scan failed');
       }
-
     } catch (error) {
       console.error('❌ Scan error:', error);
       const result = {
         status: 'error',
         ticketNumber,
         message: error.message || 'Failed to verify ticket',
-        timestamp: new Date() // ✅ Always create new Date object
+        timestamp: new Date()
       };
-
       setScanResult(result);
       toast.error(`❌ ${result.message}`);
     }
@@ -173,7 +165,6 @@ const EventScanner = () => {
       toast.error('Please enter a ticket number');
       return;
     }
-
     await handleScanSuccess(manualTicketNumber.trim());
     setManualTicketNumber('');
   };
@@ -199,7 +190,6 @@ const EventScanner = () => {
   };
 
   const formatTime = (dateObj) => {
-    // ✅ FIXED: Safe time formatting
     if (!dateObj || !(dateObj instanceof Date)) return 'Unknown time';
     try {
       return dateObj.toLocaleTimeString();
@@ -208,7 +198,13 @@ const EventScanner = () => {
     }
   };
 
-  // Loading state
+  // ✅ NEW: Navigate to attendee list function
+  const goToAttendeeList = () => {
+    navigate(`/attendees/${eventId}`, { 
+      state: { refreshNeeded: true, lastScan: Date.now() }
+    });
+  };
+
   if (loading) {
     return (
       <div className="bg-black text-white min-h-screen flex items-center justify-center">
@@ -220,7 +216,6 @@ const EventScanner = () => {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="bg-black text-white min-h-screen flex items-center justify-center">
@@ -251,12 +246,21 @@ const EventScanner = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <Link 
-            to={user?.selectedRole === 'event_host' ? '/organizer-dashboard' : '/staff-dashboard'}
-            className="inline-block mb-4 text-cyan-400 hover:text-cyan-300 transition-colors"
-          >
-            ← Back to Dashboard
-          </Link>
+          <div className="flex justify-center gap-4 mb-4">
+            <Link 
+              to={user?.selectedRole === 'event_host' ? '/organizer-dashboard' : '/staff-dashboard'}
+              className="text-cyan-400 hover:text-cyan-300 transition-colors"
+            >
+              ← Back to Dashboard
+            </Link>
+            <button
+              onClick={goToAttendeeList}
+              className="text-cyan-400 hover:text-cyan-300 transition-colors"
+            >
+              👥 View Attendees
+            </button>
+          </div>
+          
           <h1 className="text-3xl font-bold mb-2">QR Code Scanner</h1>
           <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg p-3 inline-block mb-4">
             <p className="text-blue-400 text-sm">
@@ -298,12 +302,19 @@ const EventScanner = () => {
               )}
             </div>
 
+            {/* QR Scanner Frame */}
             <div 
               id="qr-scanner" 
               ref={scannerRef}
               className="w-full max-w-md mx-auto bg-gray-800 rounded-lg overflow-hidden"
             ></div>
 
+            {/* User Instruction Tips */}
+            <p className="text-xs text-gray-500 text-center mt-2">
+              Tip: Hold the QR code steady inside the box.<br />
+              If scan fails: clean the camera, adjust lighting, or use manual entry below.
+            </p>
+            
             {/* Manual Entry */}
             <div className="mt-6 pt-6 border-t border-gray-700">
               <h4 className="text-lg font-medium mb-4 text-center">Manual Entry</h4>
@@ -372,6 +383,18 @@ const EventScanner = () => {
                     🕒 {formatTime(scanResult.timestamp)}
                   </p>
                 </div>
+
+                {/* ✅ NEW: Quick action button after successful scan */}
+                {scanResult.status === 'success' && (
+                  <div className="mt-4 text-center">
+                    <button
+                      onClick={goToAttendeeList}
+                      className="bg-cyan-500 text-black px-4 py-2 rounded-lg hover:bg-cyan-600 transition-colors font-medium"
+                    >
+                      👥 View Updated Attendee List
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

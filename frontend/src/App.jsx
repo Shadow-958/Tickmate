@@ -9,6 +9,8 @@ import OnboardingPage from '../src/Auth/Onboardingpage';
 import EventDetail from './components/attendee/Eventdetails';
 import AllEvents from './components/attendee/AllEvents';
 import Confirmationpage from './components/attendee/Confirmation';
+import ErrorBoundary from '../src/components/ErrorBoundary'; // ✅ FIXED: Added ErrorBoundary import
+
 
 // ✅ FIXED: Import the correct MyBookings component
 import MyBookingsPage from './components/attendee/MyBooking';
@@ -28,16 +30,21 @@ import Category from './components/attendee/Category';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 
-// NEW IMPORTS
+// ✅ NEW STAFF IMPORTS
 import ConditionalFooter from './components/layout/conditionalFooter';
 import StaffDashboard from './components/staff/StaffDashboard';
+import MyEvents from './components/staff/MyEvents';
+import StaffScanner from './components/staff/StaffScanner';
+import StaffAttendance from './components/staff/StaffAttendance';
 
 const App = () => {
   return (
-    <div className="pt-4">
-      <Navbar />
-      <Toaster position="top-center" reverseOrder={false} />
-      <Routes>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black">
+        <Navbar />
+        <Toaster position="top-center" reverseOrder={false} />
+        <main className="pt-20">
+          <Routes>
         {/* Public Routes */}
         <Route path='/' element={<LandingPage />} />
         <Route path='/login' element={<Login />} />
@@ -83,25 +90,48 @@ const App = () => {
           </ProtectedRoute>
         } />
         
-        {/* Scanner Route */}
+        {/* Host Scanner Route */}
         <Route path='/scanner/:eventId' element={
-          <ProtectedRoute allowedRoles={['event_host', 'event_staff']}>
+          <ProtectedRoute allowedRoles={['event_host']}>
             <EventScannerPage />
           </ProtectedRoute>
         } />
 
-        {/* Staff Protected Route */}
+        {/* ✅ STAFF PROTECTED ROUTES */}
         <Route path='/staff-dashboard' element={
           <ProtectedRoute allowedRoles={['event_staff']}>
             <StaffDashboard />
           </ProtectedRoute>
         } />
+        
+        {/* ✅ NEW: Staff My Events Route */}
+        <Route path='/staff/my-events' element={
+          <ProtectedRoute allowedRoles={['event_staff']}>
+            <MyEvents />
+          </ProtectedRoute>
+        } />
+        
+        {/* ✅ NEW: Staff Scanner Route */}
+        <Route path='/staff/scanner/:eventId' element={
+          <ProtectedRoute allowedRoles={['event_staff']}>
+            <StaffScanner />
+          </ProtectedRoute>
+        } />
+        
+        {/* ✅ NEW: Staff Attendance Route */}
+        <Route path='/staff/attendance/:eventId' element={
+          <ProtectedRoute allowedRoles={['event_staff']}>
+            <StaffAttendance />
+          </ProtectedRoute>
+        } />
 
         {/* Catch-all 404 */}
         <Route path='*' element={<NotFoundPage />} />
-      </Routes>
-      <ConditionalFooter />
-    </div>
+        </Routes>
+        <ConditionalFooter />
+        </main>
+      </div>
+    </ErrorBoundary>
   );
 };
 

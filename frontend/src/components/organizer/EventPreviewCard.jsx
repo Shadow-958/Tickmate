@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { UsersIcon, CalendarIcon, LocationIcon, TicketIcon, } from "../../helper/Icons.jsx";
 import { formatDate } from "../../helper/Date.js";
+import { getBestImageUrl, isSupabaseUrl, loadImage } from "../../utils/imageUtils";
 
 
 const DetailItem = ({ icon, label, value }) => (
@@ -14,13 +15,45 @@ const DetailItem = ({ icon, label, value }) => (
 );
 
 const EventPreviewCard = ({ event }) => {
+  const [imageSrc, setImageSrc] = useState('');
+  const [imageError, setImageError] = useState(false);
+
   const eventPrice = event.pricing.isFree ? "Free" : `₹${event.pricing.price / 100}`;
+
+  // Handle image loading
+  useEffect(() => {
+    const loadEventImage = async () => {
+      const bestUrl = getBestImageUrl(event.bannerImageUrl, event.bannerImage, event.category);
+      
+      if (isSupabaseUrl(bestUrl)) {
+        try {
+          await loadImage(bestUrl);
+          setImageSrc(bestUrl);
+        } catch (error) {
+          console.warn('Supabase image failed to load, using fallback');
+          setImageSrc(getBestImageUrl(null, null, event.category));
+          setImageError(true);
+        }
+      } else {
+        setImageSrc(bestUrl);
+      }
+    };
+
+    loadEventImage();
+  }, [event.bannerImageUrl, event.bannerImage, event.category]);
+
   return (
     <div className="relative w-full backdrop-blur-lg bg-white/5 border border-white/10 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden">
       <img
-        src={event.bannerImageUrl}
+        src={imageSrc || getBestImageUrl(null, null, event.category)}
         alt="Event Banner"
         className="w-full h-48 sm:h-64 object-cover"
+        onError={(e) => {
+          if (!imageError) {
+            setImageError(true);
+            setImageSrc(getBestImageUrl(null, null, event.category));
+          }
+        }}
       />
       <div className="p-6 sm:p-8">
         <span className="inline-block bg-gray-800 text-cyan-400 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider mb-4">

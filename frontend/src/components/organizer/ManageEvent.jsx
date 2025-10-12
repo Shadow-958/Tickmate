@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { UsersIcon, CalendarIcon, LocationIcon, TicketIcon, UserGroupIcon } from "../../helper/Icons.jsx";
 import apiClient from '../../utils/apiClient';
+import { getBestImageUrl, isSupabaseUrl, loadImage } from '../../utils/imageUtils';
 
 // Helper function to format dates safely
 const formatDate = (dateString) => {
@@ -33,11 +34,37 @@ const DetailItem = ({ icon: Icon, label, value }) => (
 );
 
 const EventPreview = ({ event, eventId }) => {
+  const [imageSrc, setImageSrc] = useState('');
+  const [imageError, setImageError] = useState(false);
+
   // Safe access to event properties with fallbacks
   const eventTitle = event?.title || 'Untitled Event';
   const eventCategory = event?.category || 'general';
   const eventDescription = event?.description || 'No description available';
-  const eventBanner = event?.bannerImageUrl || event?.bannerImage || 'https://placehold.co/1200x600/1a1a1a/ffffff?text=Event+Image';
+
+  // Handle image loading
+  useEffect(() => {
+    const loadEventImage = async () => {
+      const bestUrl = getBestImageUrl(event?.bannerImageUrl, event?.bannerImage, eventCategory);
+      
+      if (isSupabaseUrl(bestUrl)) {
+        try {
+          await loadImage(bestUrl);
+          setImageSrc(bestUrl);
+        } catch (error) {
+          console.warn('Supabase image failed to load, using fallback');
+          setImageSrc(getBestImageUrl(null, null, eventCategory));
+          setImageError(true);
+        }
+      } else {
+        setImageSrc(bestUrl);
+      }
+    };
+
+    if (event) {
+      loadEventImage();
+    }
+  }, [event?.bannerImageUrl, event?.bannerImage, eventCategory]);
   
   // Safe location handling
   const getLocationText = () => {
@@ -74,11 +101,14 @@ const EventPreview = ({ event, eventId }) => {
     <div className="flex flex-col lg:flex-row gap-10 lg:gap-16">
       <div className="lg:w-3/5">
         <img
-          src={eventBanner}
+          src={imageSrc || getBestImageUrl(null, null, eventCategory)}
           alt={eventTitle}
           className="w-full h-auto object-cover rounded-2xl shadow-lg shadow-cyan-500/10"
           onError={(e) => {
-            e.target.src = 'https://placehold.co/1200x600/1a1a1a/ffffff?text=Event+Image';
+            if (!imageError) {
+              setImageError(true);
+              setImageSrc(getBestImageUrl(null, null, eventCategory));
+            }
           }}
         />
       </div>

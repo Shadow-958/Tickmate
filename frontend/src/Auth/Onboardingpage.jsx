@@ -3,12 +3,18 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import OnboardingCompleted from '../components/auth/OnboardingCompleted';
 
 const OnboardingPage = () => {
-  const { user, selectRole } = useAuth();
+  const { user, selectRole, isOnboardingCompleted } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Show completed component if onboarding is already done
+  if (isOnboardingCompleted && user) {
+    return <OnboardingCompleted />;
+  }
 
   const handleRoleSelection = async (role) => {
     if (!user) return;
@@ -20,7 +26,7 @@ const OnboardingPage = () => {
       const result = await selectRole(role);
 
       if (result.success) {
-        toast.success(`Role updated to ${role.replace('_', ' ')}`);
+        toast.success(`Role updated to ${role.replace('_', ' ')}. Onboarding completed!`);
 
         // Navigate based on role
         if (role === 'event_host') {
@@ -44,11 +50,16 @@ const OnboardingPage = () => {
     <div className="flex flex-col justify-center items-center min-h-screen bg-gray-900 text-white p-4">
       <div className="text-center mb-12">
         <h1 className="text-4xl md:text-5xl font-bold mb-4">
-          Welcome, {user?.firstName || 'to TapIn'}!
+          Welcome, {user?.firstName || 'to TickMate'}!
         </h1>
-        <p className="text-lg text-gray-400">
+        <p className="text-lg text-gray-400 mb-4">
           To get started, please tell us how you'll be using the platform.
         </p>
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 max-w-2xl mx-auto">
+          <p className="text-yellow-400 text-sm">
+            ⚠️ <strong>Important:</strong> You can only choose your role once. This selection cannot be changed later, so please choose carefully.
+          </p>
+        </div>
       </div>
 
       {/* Role Selection Cards */}

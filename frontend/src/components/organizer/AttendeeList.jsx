@@ -1,6 +1,8 @@
-// src/components/organizer/AttendeeList.jsx
+// src/components/organizer/AttendeeList.jsx - UPDATED WITH AUTO-REFRESH INTEGRATION
+
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useLocation } from "react-router-dom";
+import { useSocket } from '../../contexts/socketContext.jsx';
 import { QrCodeIcon, ChartBarIcon } from "../../helper/Icons.jsx";
 import apiClient from "../../utils/apiClient";
 import toast from 'react-hot-toast';
@@ -14,7 +16,6 @@ const StatusPill = ({ isCheckedIn }) => (
   </div>
 );
 
-// Enhanced Search and Filter Component
 const SearchAndFilter = ({ searchTerm, setSearchTerm, filterStatus, setFilterStatus, paymentFilter, setPaymentFilter }) => (
   <div className="mb-6 flex flex-col md:flex-row gap-4">
     <div className="flex-1">
@@ -49,7 +50,22 @@ const SearchAndFilter = ({ searchTerm, setSearchTerm, filterStatus, setFilterSta
   </div>
 );
 
-// Enhanced Stats Component with Analytics
+// Helper functions
+const safeNumber = (value, defaultValue = 0) => {
+  const num = parseFloat(value);
+  return isNaN(num) ? defaultValue : num;
+};
+
+const formatCurrency = (value, defaultValue = 0) => {
+  const num = safeNumber(value, defaultValue);
+  return `$${num.toFixed(2)}`;
+};
+
+const formatPercentage = (value, defaultValue = 0) => {
+  const num = safeNumber(value, defaultValue);
+  return `${num.toFixed(1)}%`;
+};
+
 const StatsCards = ({ attendees, event, analytics }) => {
   const totalAttendees = attendees.length;
   const checkedIn = attendees.filter(a => a.checkInStatus?.isCheckedIn).length;
@@ -57,14 +73,35 @@ const StatsCards = ({ attendees, event, analytics }) => {
   const paidTickets = attendees.filter(a => a.paymentStatus === 'completed').length;
   const totalRevenue = attendees
     .filter(a => a.paymentStatus === 'completed')
-    .reduce((sum, a) => sum + (a.pricePaid || 0), 0);
+    .reduce((sum, a) => sum + safeNumber(a.pricePaid, 0), 0);
 
-  const capacity = event?.capacity || 0;
+  const capacity = safeNumber(event?.capacity, 0);
   const capacityPercentage = capacity > 0 ? ((totalAttendees / capacity) * 100).toFixed(1) : 0;
+
+  const getAnalyticsValue = (path, defaultValue = 0) => {
+    try {
+      const keys = path.split('.');
+      let value = analytics;
+      for (const key of keys) {
+        value = value?.[key];
+        if (value === undefined || value === null) return defaultValue;
+      }
+      return safeNumber(value, defaultValue);
+    } catch (error) {
+      console.warn('Analytics value extraction error:', error);
+      return defaultValue;
+    }
+  };
+
+  const analyticsData = {
+    capacityUtilization: getAnalyticsValue('ticketStats.capacityUtilization', capacityPercentage),
+    averageTicketPrice: getAnalyticsValue('revenue.averageTicketPrice', totalRevenue / Math.max(paidTickets, 1)),
+    checkInRate: totalAttendees > 0 ? (checkedIn / totalAttendees) * 100 : 0,
+    totalAnalyticsRevenue: getAnalyticsValue('revenue.totalRevenue', totalRevenue)
+  };
 
   return (
     <div className="mb-6">
-      {/* Main Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
           <div className="flex items-center justify-between">
@@ -107,7 +144,7 @@ const StatsCards = ({ attendees, event, analytics }) => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-purple-400 font-semibold text-sm">Revenue</h3>
-              <p className="text-2xl font-bold text-white">${totalRevenue.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-white">{formatCurrency(totalRevenue)}</p>
               <p className="text-xs text-gray-400">{paidTickets} paid tickets</p>
             </div>
             <span className="text-2xl">💰</span>
@@ -115,76 +152,62 @@ const StatsCards = ({ attendees, event, analytics }) => {
         </div>
       </div>
 
-      {/* Analytics Summary */}
-      {analytics && (
+      {analytics && Object.keys(analytics).length > 0 && (
         <div className="bg-gradient-to-r from-gray-900/50 to-gray-800/50 rounded-lg p-4 border border-gray-700">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-semibold text-white flex items-center">
               <ChartBarIcon className="h-5 w-5 mr-2 text-cyan-400" />
               Event Analytics
             </h3>
+            <span className="text-xs text-gray-400">
+              Last updated: {new Date().toLocaleTimeString()}
+            </span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <p className="text-gray-400">Capacity Used</p>
-              <p className="text-white font-semibold">{analytics.ticketStats?.capacityUtilization || 0}%</p>
+              <p className="text-white font-semibold">
+                {formatPercentage(analyticsData.capacityUtilization)}
+              </p>
             </div>
             <div>
               <p className="text-gray-400">Avg Ticket Price</p>
-              <p className="text-white font-semibold">${analytics.revenue?.averageTicketPrice?.toFixed(2) || '0.00'}</p>
+              <p className="text-white font-semibold">
+                {formatCurrency(analyticsData.averageTicketPrice)}
+              </p>
             </div>
             <div>
               <p className="text-gray-400">Check-in Rate</p>
               <p className="text-white font-semibold">
-                {totalAttendees > 0 ? ((checkedIn / totalAttendees) * 100).toFixed(1) : 0}%
+                {formatPercentage(analyticsData.checkInRate)}
               </p>
             </div>
             <div>
               <p className="text-gray-400">Total Revenue</p>
-              <p className="text-white font-semibold">${analytics.revenue?.totalRevenue?.toFixed(2) || '0.00'}</p>
+              <p className="text-white font-semibold">
+                {formatCurrency(analyticsData.totalAnalyticsRevenue)}
+              </p>
             </div>
           </div>
+        </div>
+      )}
+      
+      {(!analytics || Object.keys(analytics).length === 0) && (
+        <div className="bg-gray-900/30 rounded-lg p-4 border border-gray-700 text-center">
+          <p className="text-gray-400 text-sm">
+            📊 Analytics data will be available once the backend provides detailed metrics
+          </p>
         </div>
       )}
     </div>
   );
 };
 
-// Manual Check-in Component
-const ManualCheckIn = ({ eventId, attendeeId, onSuccess }) => {
-  const [loading, setLoading] = useState(false);
-
-  const handleCheckIn = async () => {
-    try {
-      setLoading(true);
-      await apiClient.post(`/api/host/events/${eventId}/manual-checkin`, {
-        attendeeId: attendeeId
-      });
-      
-      toast.success('Attendee checked in successfully!');
-      onSuccess();
-    } catch (error) {
-      console.error('Check-in error:', error);
-      toast.error(error.message || 'Failed to check in attendee');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <button
-      onClick={handleCheckIn}
-      disabled={loading}
-      className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors"
-    >
-      {loading ? 'Checking in...' : 'Check In'}
-    </button>
-  );
-};
-
-// --- Main Attendee List Page Component ---
+// Main Component
 const AttendeeListPage = () => {
   const { eventId } = useParams();
+  const location = useLocation();
+  const { socket, isConnected } = useSocket();
   const [attendees, setAttendees] = useState([]);
   const [event, setEvent] = useState(null);
   const [analytics, setAnalytics] = useState(null);
@@ -193,54 +216,142 @@ const AttendeeListPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
+  const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
 
-  const fetchData = async () => {
+  // ✅ ENHANCED: Fetch data function with better refresh capabilities
+  const fetchData = async (showRefreshToast = false) => {
     try {
-      setLoading(true);
+      setLoading(!showRefreshToast); // Don't show loader if it's just a refresh
       setError(null);
 
       console.log('📋 Fetching attendee data for event:', eventId);
 
-      // Fetch event details and analytics
-      const promises = [
-        apiClient.get(`/api/host/events/${eventId}/attendees`),
-        apiClient.get(`/api/host/events/${eventId}`).catch(() => null),
-        apiClient.get(`/api/host/events/${eventId}/analytics`).catch(() => null)
-      ];
+      const fetchAttendees = async () => {
+        try {
+          const response = await apiClient.get(`/api/host/events/${eventId}/attendees`);
+          return response;
+        } catch (error) {
+          console.error('Failed to fetch attendees:', error);
+          throw new Error('Failed to load attendees');
+        }
+      };
 
-      const [attendeesResponse, eventResponse, analyticsResponse] = await Promise.all(promises);
+      const fetchEvent = async () => {
+        try {
+          const response = await apiClient.get(`/api/host/events/${eventId}`);
+          return response;
+        } catch (error) {
+          console.warn('Failed to fetch event details:', error);
+          return null;
+        }
+      };
 
-      // Set attendees data
+      const fetchAnalytics = async () => {
+        try {
+          const response = await apiClient.get(`/api/host/events/${eventId}/analytics`);
+          return response;
+        } catch (error) {
+          console.warn('Failed to fetch analytics:', error);
+          return null;
+        }
+      };
+
+      const [attendeesResponse, eventResponse, analyticsResponse] = await Promise.all([
+        fetchAttendees(),
+        fetchEvent(),
+        fetchAnalytics()
+      ]);
+
       const attendeesData = attendeesResponse.attendees || [];
       console.log('✅ Loaded attendees:', attendeesData.length);
+      
+      // ✅ Log check-in statuses for debugging
+      const checkedInCount = attendeesData.filter(a => a.checkInStatus?.isCheckedIn).length;
+      console.log('✅ Checked-in attendees:', checkedInCount);
+      
       setAttendees(attendeesData);
 
-      // Set event data
       if (eventResponse) {
         setEvent(eventResponse.event || eventResponse.data || attendeesResponse.event);
       }
 
-      // Set analytics data
       if (analyticsResponse) {
-        setAnalytics(analyticsResponse.analytics || analyticsResponse.data);
-        console.log('📊 Loaded analytics:', analyticsResponse.analytics);
+        const analyticsData = analyticsResponse.analytics || analyticsResponse.data || {};
+        console.log('📊 Loaded analytics:', analyticsData);
+        setAnalytics(analyticsData);
+      } else {
+        console.log('📊 No analytics data available');
+        setAnalytics({});
+      }
+
+      setLastRefreshTime(Date.now());
+      
+      if (showRefreshToast) {
+        toast.success('✅ Attendee list refreshed!');
       }
 
     } catch (err) {
       console.error('❌ Error fetching attendees:', err);
       setError(err.message || 'Failed to load attendees');
+      toast.error('Failed to load attendee data');
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ SOCKET.IO: Listen for real-time check-in updates
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleAttendeeCheckedIn = (data) => {
+      console.log('✅ Real-time check-in update received in AttendeeList:', data);
+      if (data.eventId === eventId) {
+        console.log('🔄 Refreshing attendee list due to new check-in');
+        
+        // Show notification for check-ins
+        const scannerInfo = data.scannerRole === 'event_host' ? 'Host' : 'Staff';
+        toast.success(`📱 ${data.attendeeName} checked in by ${scannerInfo}`, {
+          duration: 4000,
+          icon: '✅'
+        });
+        
+        // Refresh the attendee list
+        fetchData(true);
+      }
+    };
+
+    // Join event room for real-time updates
+    socket.emit('join_event', eventId);
+    
+    socket.on('attendee_checked_in', handleAttendeeCheckedIn);
+    
+    return () => {
+      socket.off('attendee_checked_in', handleAttendeeCheckedIn);
+      socket.emit('leave_event', eventId);
+    };
+  }, [socket, isConnected, eventId]);
+
+  // Note: Real-time updates now handled by Socket.IO above
+
+  // ✅ NEW: Handle navigation state for refresh triggers
+  useEffect(() => {
+    if (location.state?.refreshNeeded) {
+      console.log('🔄 Navigation state indicates refresh needed');
+      fetchData(true);
+      
+      // Clear the state to prevent repeated refreshes
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+  // Initial fetch
   useEffect(() => {
     if (eventId) {
       fetchData();
     }
   }, [eventId]);
 
-  // Filter attendees based on search, status, and payment
+  // Filter attendees
   const filteredAttendees = attendees.filter(attendee => {
     const attendeeInfo = attendee.attendee || {};
     const firstName = attendeeInfo.firstName || '';
@@ -291,7 +402,7 @@ const AttendeeListPage = () => {
           `${attendeeInfo.firstName || ''} ${attendeeInfo.lastName || ''}`.trim() || 'N/A',
           attendeeInfo.email || 'No email',
           attendee.ticketNumber || 'N/A',
-          `$${(attendee.pricePaid || 0).toFixed(2)}`,
+          formatCurrency(attendee.pricePaid),
           attendee.paymentStatus || 'Unknown',
           formatDate(attendee.bookingDate),
           isCheckedIn ? 'Checked In' : 'Not Checked In',
@@ -338,7 +449,7 @@ const AttendeeListPage = () => {
           <h2 className="text-2xl font-bold text-red-400 mb-4">Error Loading Attendees</h2>
           <p className="text-gray-400 mb-6">{error}</p>
           <button 
-            onClick={fetchData} 
+            onClick={() => fetchData()} 
             className="bg-cyan-500 text-black px-6 py-3 rounded-lg hover:bg-cyan-600 transition-colors"
           >
             Try Again
@@ -390,10 +501,8 @@ const AttendeeListPage = () => {
           </div>
         </header>
 
-        {/* Enhanced Stats Cards with Analytics */}
         <StatsCards attendees={attendees} event={event} analytics={analytics} />
-
-        {/* Search and Filter */}
+        
         <SearchAndFilter
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
@@ -406,7 +515,7 @@ const AttendeeListPage = () => {
         {/* Attendees Table */}
         <div className="backdrop-blur-md bg-white/5 border border-white/10 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left min-w-[800px]">
+            <table className="w-full text-left min-w-[700px]">
               <thead className="bg-gray-800/50">
                 <tr>
                   <th className="p-4 text-sm font-semibold text-gray-300">S.No.</th>
@@ -415,7 +524,6 @@ const AttendeeListPage = () => {
                   <th className="p-4 text-sm font-semibold text-gray-300">Ticket Details</th>
                   <th className="p-4 text-sm font-semibold text-gray-300">Payment</th>
                   <th className="p-4 text-sm font-semibold text-gray-300">Status</th>
-                  <th className="p-4 text-sm font-semibold text-gray-300">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -463,7 +571,7 @@ const AttendeeListPage = () => {
                       <td className="p-4">
                         <div>
                           <p className="text-white font-medium">
-                            ${(ticket.pricePaid || 0).toFixed(2)}
+                            {formatCurrency(ticket.pricePaid)}
                           </p>
                           <span className={`text-xs px-2 py-1 rounded ${
                             ticket.paymentStatus === 'completed' 
@@ -481,16 +589,6 @@ const AttendeeListPage = () => {
                           <p className="text-xs text-gray-500 mt-1">
                             {formatDate(ticket.checkInStatus.checkInTime)}
                           </p>
-                        )}
-                      </td>
-                      
-                      <td className="p-4">
-                        {!isCheckedIn && (
-                          <ManualCheckIn 
-                            eventId={eventId} 
-                            attendeeId={ticket._id} 
-                            onSuccess={fetchData}
-                          />
                         )}
                       </td>
                     </tr>
@@ -540,10 +638,13 @@ const AttendeeListPage = () => {
                       <span className="text-cyan-400"> matching "{searchTerm}"</span>
                     )}
                   </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Last updated: {new Date(lastRefreshTime).toLocaleTimeString()}
+                  </p>
                 </div>
                 <div className="flex items-center space-x-4">
                   <button
-                    onClick={() => fetchData()}
+                    onClick={() => fetchData(true)}
                     className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors text-sm"
                   >
                     🔄 Refresh

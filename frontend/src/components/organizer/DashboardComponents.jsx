@@ -14,6 +14,7 @@ import {
   XCircleIcon,
   PlusIcon
 } from '../../helper/Icons';
+import { getBestImageUrl } from '../../utils/imageUtils';
 
 // Alternative icons (simple SVGs) for missing icons
 const CurrencyIcon = ({ className }) => (
@@ -71,13 +72,8 @@ const formatDate = (dateString) => {
 };
 
 const getWorkingImageUrl = (imageUrl, defaultImage = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=200&fit=crop&crop=center') => {
-  if (!imageUrl || 
-      imageUrl.includes('via.placeholder.com') || 
-      imageUrl.includes('FFFFFF?text=Event+Banner') ||
-      imageUrl === 'https://via.placeholder.com/1200x400/4A90E2/FFFFFF?text=Event+Banner') {
-    return defaultImage;
-  }
-  return imageUrl;
+  // Use the new image utility for better handling
+  return getBestImageUrl(imageUrl, null, 'general') || defaultImage;
 };
 
 // Stats Card Component
@@ -283,11 +279,11 @@ const EventCard = ({ event, onDelete, staffUsers, onAssignStaff, onRemoveStaff, 
     <div className="bg-gray-900/50 rounded-xl border border-gray-800 overflow-hidden hover:border-gray-700 transition-colors">
       <div className="aspect-video bg-gray-800 relative overflow-hidden">
         <img
-          src={getWorkingImageUrl(event.bannerImageUrl)}
+          src={getBestImageUrl(event.bannerImageUrl, event.bannerImage, event.category)}
           alt={event.title}
           className="w-full h-full object-cover"
           onError={(e) => {
-            e.target.src = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=200&fit=crop&crop=center';
+            e.target.src = getBestImageUrl(null, null, event.category);
           }}
         />
         <div className="absolute top-3 right-3">

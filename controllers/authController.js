@@ -82,6 +82,7 @@ const register = async (req, res) => {
       lastName: user.lastName,
       username: user.username,
       selectedRole: user.selectedRole,
+      onboardingCompleted: user.onboardingCompleted,
       phone: user.phone,
       createdAt: user.createdAt
     };
@@ -150,6 +151,7 @@ const login = async (req, res) => {
       lastName: user.lastName,
       username: user.username,
       selectedRole: user.selectedRole,
+      onboardingCompleted: user.onboardingCompleted,
       phone: user.phone,
       createdAt: user.createdAt
     };
@@ -180,6 +182,15 @@ const selectRole = async (req, res) => {
     const { role, profileData } = req.body;
     const userId = req.user._id;
 
+    // Check if user has already completed onboarding
+    const currentUser = await User.findById(userId);
+    if (currentUser.onboardingCompleted) {
+      return res.status(400).json({
+        success: false,
+        message: 'Role selection is only allowed once. You have already completed onboarding.'
+      });
+    }
+
     // Validate role
     const validRoles = ['event_host', 'event_attendee', 'event_staff'];
     if (!validRoles.includes(role)) {
@@ -189,7 +200,10 @@ const selectRole = async (req, res) => {
       });
     }
 
-    const updateData = { selectedRole: role };
+    const updateData = { 
+      selectedRole: role,
+      onboardingCompleted: true // Mark onboarding as completed
+    };
 
     // Handle role-specific profile data
     if (role === 'event_host' && profileData) {
@@ -222,7 +236,7 @@ const selectRole = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Role updated successfully to ${role}`,
+      message: `Role updated successfully to ${role}. Onboarding completed!`,
       user: {
         id: user._id,
         email: user.email,
@@ -230,6 +244,7 @@ const selectRole = async (req, res) => {
         lastName: user.lastName,
         username: user.username,
         selectedRole: user.selectedRole,
+        onboardingCompleted: user.onboardingCompleted,
         hostProfile: user.hostProfile,
         staffProfile: user.staffProfile
       }
@@ -267,7 +282,11 @@ const getMe = async (req, res) => {
         lastName: user.lastName,
         username: user.username,
         selectedRole: user.selectedRole,
+        onboardingCompleted: user.onboardingCompleted,
         phone: user.phone,
+        hostProfile: user.hostProfile,
+        staffProfile: user.staffProfile,
+        attendeeProfile: user.attendeeProfile,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       }

@@ -117,9 +117,7 @@ export default function Footer() {
                         </div>
                       </div>
                       {/* Online indicator */}
-                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-400 rounded-full border-2 border-gray-900 flex items-center justify-center">
-                        <div className="w-2 h-2 bg-white rounded-full"></div>
-                      </div>
+                      
                     </div>
 
                     {/* Name and Role */}

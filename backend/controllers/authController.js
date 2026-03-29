@@ -82,6 +82,7 @@ const register = async (req, res) => {
       lastName: user.lastName,
       username: user.username,
       selectedRole: user.selectedRole,
+      onboardingCompleted: user.onboardingCompleted,
       phone: user.phone,
       createdAt: user.createdAt
     };
@@ -150,6 +151,7 @@ const login = async (req, res) => {
       lastName: user.lastName,
       username: user.username,
       selectedRole: user.selectedRole,
+      onboardingCompleted: user.onboardingCompleted,
       phone: user.phone,
       createdAt: user.createdAt
     };

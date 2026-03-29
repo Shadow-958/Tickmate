@@ -9,6 +9,7 @@ const ConditionalFooter = () => {
 
   // Pages where footer should NOT appear
   const hideFooterPaths = [
+    '/onboarding',
     '/confirmation',
     '/events',
     '/allevents',

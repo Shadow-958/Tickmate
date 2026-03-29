@@ -28,19 +28,29 @@ const eventsRoutes = require('./routes/eventsRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Create HTTP server and Socket.IO instance
-const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Authorization", "Content-Type"],
-    credentials: true
+// ==================== CORS CONFIGURATION ====================
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://tickmate-frontend.s3-website-us-east-1.amazonaws.com",
+  "https://d2860jay0pdmtv.cloudfront.net"
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // allow Postman / curl
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      console.log("❌ CORS blocked:", origin);
+      return callback(new Error("Not allowed by CORS"));
+    }
   },
-  transports: ['websocket', 'polling'],
-  pingTimeout: 60000,
-  pingInterval: 25000
-});
+  credentials: true,
+  allowedHeaders: ["Authorization", "Content-Type"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+}));
 
 // Make io globally available
 global.io = io;
@@ -54,12 +64,21 @@ app.use(helmet({
 }));
 
 // CORS configuration
-app.use(cors({
-  origin: "http://localhost:5173", // your React app URL
-  credentials: true,
-  allowedHeaders: ["Authorization", "Content-Type"],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-}));
+const io = socketIo(server, {
+  cors: {
+    origin: [
+      "http://localhost:5173",
+      "http://tickmate-frontend.s3-website-us-east-1.amazonaws.com",
+      "https://d2860jay0pdmtv.cloudfront.net"
+    ],
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Authorization", "Content-Type"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling'],
+  pingTimeout: 60000,
+  pingInterval: 25000
+});
 
 // Rate limiting
 const limiter = rateLimit({

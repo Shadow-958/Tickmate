@@ -82,14 +82,6 @@ userSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;
 });
 
-// Pre-save hook: mark onboardingCompleted true if selectedRole set and onboarding not done
-userSchema.pre('save', function(next) {
-  if (this.selectedRole && !this.onboardingCompleted) {
-    this.onboardingCompleted = true;
-  }
-  next();
-});
-
 module.exports = mongoose.models.User || mongoose.model('User', userSchema);
 
 console.log('Enhanced User model loaded successfully');
